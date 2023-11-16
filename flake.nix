@@ -13,12 +13,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 {
-  inputs = {};
+  inputs = {
+    cl-nix-lite.url = "github:hraban/cl-nix-lite";
+  };
 
   outputs = {
-    nixpkgs
+    self
+    , nixpkgs
     , flake-utils
-    , ...
+    , cl-nix-lite
   }: {
     # Module to allow darwin hosts to get the timezone name as a string without
     # a password. Insanity but ok. Separate module because it affects different
@@ -46,5 +49,29 @@
             systemPackages = [ get-timezone ];
           };
         };
-  };
+  } // (with flake-utils.lib; eachSystem [ system.x86_64-darwin system.aarch64-darwin ] (system: {
+    packages =
+      let
+        pkgs = nixpkgs.legacyPackages.${system}.extend cl-nix-lite.overlays.default;
+        lpp = pkgs.lispPackagesLite;
+      in {
+        # Darwin-only because of ‘say’
+        alarm = with lpp; lispScript {
+          name = "alarm";
+          src = ./alarm.lisp;
+          dependencies = [
+            arrow-macros
+            f-underscore
+            inferior-shell
+            local-time
+            trivia
+            lpp."trivia.ppcre"
+          ];
+          installCheckPhase = ''
+            $out/bin/alarm --help
+          '';
+          doInstallCheck = true;
+        };
+      };
+    }));
 }

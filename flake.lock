@@ -1,5 +1,20 @@
 {
   "nodes": {
+    "cl-nix-lite": {
+      "locked": {
+        "lastModified": 1699767976,
+        "narHash": "sha256-PqMYazf/nncrzggZOhufbudCE4cc3h/5STT4ma753Y4=",
+        "owner": "hraban",
+        "repo": "cl-nix-lite",
+        "rev": "d9196bae0886537827588fffd5ab369597bc7a74",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hraban",
+        "repo": "cl-nix-lite",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -33,6 +48,7 @@
     },
     "root": {
       "inputs": {
+        "cl-nix-lite": "cl-nix-lite",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs"
       }
