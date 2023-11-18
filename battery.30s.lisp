@@ -21,6 +21,7 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 (setf *compile-verbose* NIL)
+(setf *trace-output* *error-output*)
 
 (require "asdf")
 (require "uiop")
