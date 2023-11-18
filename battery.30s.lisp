@@ -62,8 +62,11 @@
 (defun println (s)
   (format T "~A~%" s))
 
+(defun boolstr (b)
+  (if b "true" "false"))
+
 (defun print-set (lvl)
-  (println #?"Set to ${lvl} | shell=${*me*} | param1=${lvl}"))
+  (println #?"Set to ${lvl} | shell=${*me*} | param1=${lvl} | terminal=${(boolstr (debugp))} | refresh=true"))
 
 (defun print-menu ()
   (println (bclm-read))
