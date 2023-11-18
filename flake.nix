@@ -73,8 +73,8 @@
           });
         };
     };
-  } // (with flake-utils.lib; eachSystem [ system.x86_64-darwin system.aarch64-darwin ] (system: {
-    packages =
+  } // {
+    packages = nixpkgs.lib.genAttrs (with flake-utils.lib.system; [ x86_64-darwin aarch64-darwin ]) (system:
       let
         pkgs = nixpkgs.legacyPackages.${system}.extend cl-nix-lite.overlays.default;
         lpl = pkgs.lispPackagesLite;
@@ -96,22 +96,48 @@
           '';
           doInstallCheck = true;
         };
-        battery = with lpl; lispScript {
-          name = "battery.30s.lisp";
-          src = ./battery.30s.lisp;
-          dependencies = [
-            arrow-macros
-            cl-interpol
-            cl-json
-            inferior-shell
-          ];
-          # I downloaded this somewhere once and it works. 🤷‍♀️
-          bclm = ./bclm;
-          postInstall = ''
-            export self="$out/bin/$name"
-            substituteAllInPlace "$self"
-          '';
+      }
+    ) // {
+      x86_64-darwin =
+        let
+          pkgs = nixpkgs.legacyPackages.x86_64-darwin.extend cl-nix-lite.overlays.default;
+          lpl = pkgs.lispPackagesLite;
+        in {
+          battery = with lpl; lispScript {
+            name = "battery.30s.lisp";
+            src = ./battery.30s.lisp;
+            dependencies = [
+              arrow-macros
+              cl-interpol
+              cl-json
+              inferior-shell
+            ];
+            bclm = "${self.packages.x86_64-darwin.bclm}/bin/bclm";
+            postInstall = ''
+              export self="$out/bin/$name"
+              substituteAllInPlace "$self"
+            '';
+          };
+          bclm = pkgs.stdenv.mkDerivation {
+            name = "bclm";
+            # There’s a copy of this binary included locally en cas de coup dur
+            src = pkgs.fetchzip {
+              url = "https://github.com/zackelia/bclm/releases/download/v0.0.4/bclm.zip";
+              hash = "sha256-3sQhszO+MRLGF5/dm1mFXQZu/MxK3nw68HTpc3cEBOA=";
+            };
+            installPhase = ''
+              mkdir -p $out/bin/
+              cp bclm $out/bin/
+            '';
+            dontFixup = true;
+            meta = {
+              platforms = [ "x86_64-darwin" ];
+              license = pkgs.lib.licenses.mit;
+              sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
+              downloadPage = "https://github.com/zackelia/bclm/releases";
+            };
+          };
         };
-      };
-    }));
+    };
+  };
 }
