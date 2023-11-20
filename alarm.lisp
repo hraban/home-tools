@@ -45,10 +45,13 @@
 (defun sh (&rest args)
   (apply #'sh:run `(,@args :show ,(uiop:getenv "DEBUGSH"))))
 
+(defun println (s)
+  (declare (type string s))
+  (format T "~A~%" s))
+
 (defgeneric say (msg))
 
 (defmethod say ((msg string))
-  (format T "~A~%" msg)
   (sh `(say "--" ,msg)))
 
 (defmethod say ((msg list))
@@ -74,7 +77,7 @@
        (zip <> '(:hour :minute :sec))
        (remove nil <> :key #'car)))
 
-(defun format-hms (hms)
+(defun sleep-msg (hms)
   (some->> hms
            index-hms
            (format NIL "Sleeping for ~{~{~A ~(~A~)~:*~:P~*~}~^, ~}")))
@@ -85,12 +88,19 @@
       (substitute nil 0 (list hour minute sec)))))
 
 (defun set-alarm-seconds (sec msg)
-  (sh '(date))
-  (-> sec
-      sec->hms
-      format-hms
-      say)
+  (let ((sleep-msg (-> sec
+                       sec->hms
+                       sleep-msg)))
+    (format T "~A at " sleep-msg)
+    (finish-output)
+    (sh '(date))
+    ;; Make sure this shows up last, to grab attention
+    (println "Can you hear me?")
+    (say sleep-msg))
+  (say "Is Amphetamine turned on, and for long enough?")
   (sleep sec)
+  (format T "Waking up at ")
+  (finish-output)
   (sh '(date))
   ;; Alarm! Loop until killed.
   (loop do (progn (say msg) (sleep 3))))
@@ -136,7 +146,7 @@
 ;;; CLI
 
 (defun print-usage ()
-  (format T "Usage: alarm <at|in> TIME MSG...~%"))
+  (println "Usage: alarm <at|in> TIME MSG..."))
 
 (defun parse-integer-or-nil (s)
   (declare (type (or null string) s))
