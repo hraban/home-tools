@@ -147,7 +147,19 @@
 ;;; CLI
 
 (defun print-usage ()
-  (println "Usage: alarm <at|in> TIME MSG..."))
+  (println "Usage: alarm <at|in> TIME [MSG...]
+
+Examples:
+
+    alarm at 3h     # set an alarm for the next 3 AM
+    alarm at 15h    # set an alarm for the next 3 PM
+    alarm at 4h3m2s # set an alarm for the next 4:03:02 AM
+    alarm in 3h     # set a timer for 180 minutes
+    alarm in 1s     # set a timer for 1 second
+    alarm in 4h3m2s # set a timer for 4 hours, 3 minutes, 2 seconds
+
+    alarm in 1h chicken done # Set a timer with custom message
+"))
 
 (defun parse-integer-or-nil (s)
   (declare (type (or null string) s))
