@@ -41,6 +41,7 @@
 (in-package #:alarm)
 
 (defvar *now*)
+(defvar *default-msg* "wake up")
 
 (defun sh (&rest args)
   (apply #'sh:run `(,@args :show ,(uiop:getenv "DEBUGSH"))))
@@ -162,13 +163,11 @@
           (uiop:quit 0))
         (match args
           ((trivia:guard
-            (list* (or (and "in" (trivia:<> iora 'in))
-                       (and "at" (trivia:<> iora 'at)))
-                   (ppcre "^(?:(\\d+)h)?(?:(\\d+)m)?(?:(\\d+)s)?$" h m s)
-                   msg)
-            (and msg
-                 (some #'identity (list h m s))))
-           (set-alarm iora (mapcar #'parse-integer-or-nil (list h m s)) msg))
+            (list* "in" (ppcre "^(?:(\\d+)h)?(?:(\\d+)m(?:in)?)?(?:(\\d+)s(?:ec)?)?$" h m s) msg)
+            (some #'identity (list h m s)))
+           (set-alarm 'in (mapcar #'parse-integer-or-nil (list h m s)) (or msg *default-msg*)))
+          ((list* "at" (ppcre "^(\\d+)(?:[h:](?:(\\d+)m(?:in)??)?)?" h m) msg)
+           (set-alarm 'at (mapcar #'parse-integer-or-nil (list h m "0")) (or msg *default-msg*)))
           (_
            (print-usage)
            (uiop:quit 1))))))
