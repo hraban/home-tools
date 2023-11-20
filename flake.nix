@@ -74,7 +74,7 @@
         };
     };
   } // {
-    packages = nixpkgs.lib.genAttrs (with flake-utils.lib.system; [ x86_64-darwin aarch64-darwin ]) (system:
+    packages = nixpkgs.lib.recursiveUpdate (nixpkgs.lib.genAttrs (with flake-utils.lib.system; [ x86_64-darwin aarch64-darwin ]) (system:
       let
         pkgs = nixpkgs.legacyPackages.${system}.extend cl-nix-lite.overlays.default;
         lpl = pkgs.lispPackagesLite;
@@ -97,7 +97,7 @@
           doInstallCheck = true;
         };
       }
-    ) // {
+    )) {
       x86_64-darwin =
         let
           pkgs = nixpkgs.legacyPackages.x86_64-darwin.extend cl-nix-lite.overlays.default;
