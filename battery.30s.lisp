@@ -71,7 +71,7 @@
 (defun print-menu ()
   (println (bclm-read))
   (println "---")
-  (dolist (n '(20 30 70 100))
+  (dolist (n (loop for i from 50 upto 100 by 10 collect i))
     (print-set n)))
 
 (defun main ()
