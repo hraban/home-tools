@@ -149,7 +149,7 @@
               trivia
             ];
             inherit bclm;
-            passthru.sudo-bianries = [ bclm ];
+            passthru.sudo-binaries = [ bclm ];
             postInstall = ''
               export self="$out/bin/$name"
               substituteAllInPlace "$self"
