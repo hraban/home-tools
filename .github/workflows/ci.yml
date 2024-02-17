@@ -6,7 +6,13 @@ on:
 
 jobs:
   nix:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: ubuntu-latest
+          - os: macos-latest
+    runs-on: ${{ matrix.config.os }}
     steps:
     - uses: actions/checkout@v3
     - uses: DeterminateSystems/nix-installer-action@main
