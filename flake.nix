@@ -66,28 +66,27 @@
             };
           };
         };
-      xbar-battery-plugin = { pkgs, config, ... }:
-        let
-          inherit (self.packages.${pkgs.system}) battery;
-        in {
-          assertions = [ {
-            assertion = pkgs.stdenv.system == "x86_64-darwin";
-            message = "The BCLM binary only works on x86_64-darwin";
-          } ];
-          environment = {
-            etc."sudoers.d/bclm".text = ''
-              ALL ALL = NOPASSWD: ${battery.bclm}
-            '';
+      xbar-battery-plugin = { pkgs, config, ... }: let
+        plugin = self.packages.${pkgs.system}.xbar-battery-plugin;
+      in {
+        # Assume home-manager is used.
+        home-manager.users = pkgs.lib.genAttrs config.users.knownUsers (name: {
+          home.file.xbar-battery-plugin = {
+            # The easiest way to copy a binary whose name I don’t know, is to
+            # just copy the entire directory recursively, because I know it’s
+            # the only binary in there, anyway :)
+            source = "${plugin}/bin/";
+            target = "Library/Application Support/xbar/plugins/";
+            recursive = true;
+            executable = true;
           };
-          # Assume home-manager is used.
-          home-manager.users = pkgs.lib.genAttrs config.users.knownUsers (name: {
-            home.file.xbar-battery-plugin = {
-              source = "${battery}/bin/battery.30s.lisp";
-              target = "Library/Application Support/xbar/plugins/battery.30s.lisp";
-              executable = true;
-            };
-          });
+        });
+        environment = {
+          etc."sudoers.d/home-tools-battery-control".text = pkgs.lib.concatMapStringsSep "\n" (bin: ''
+            ALL ALL = NOPASSWD: ${bin}
+          '') plugin.sudo-binaries;
         };
+      };
     };
   } // {
     packages = nixpkgs.lib.recursiveUpdate (nixpkgs.lib.genAttrs (with flake-utils.lib.system; [ x86_64-darwin aarch64-darwin ]) (system:
@@ -119,21 +118,6 @@
           pkgs = nixpkgs.legacyPackages.x86_64-darwin.extend cl-nix-lite.overlays.default;
           lpl = pkgs.lispPackagesLite;
         in {
-          battery = with lpl; lispScript {
-            name = "battery.30s.lisp";
-            src = ./battery.30s.lisp;
-            dependencies = [
-              arrow-macros
-              cl-interpol
-              cl-json
-              inferior-shell
-            ];
-            bclm = "${self.packages.x86_64-darwin.bclm}/bin/bclm";
-            postInstall = ''
-              export self="$out/bin/$name"
-              substituteAllInPlace "$self"
-            '';
-          };
           bclm = pkgs.stdenv.mkDerivation {
             name = "bclm";
             # There’s a copy of this binary included locally en cas de coup dur
@@ -152,6 +136,24 @@
               sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
               downloadPage = "https://github.com/zackelia/bclm/releases";
             };
+          };
+          xbar-battery-plugin = let
+            bclm = pkgs.lib.getExe self.packages.x86_64-darwin.bclm;
+          in with lpl; lispScript {
+            name = "battery.30s.lisp";
+            src = ./battery.30s.lisp;
+            dependencies = [
+              arrow-macros
+              cl-interpol
+              inferior-shell
+              trivia
+            ];
+            inherit bclm;
+            passthru.sudo-bianries = [ bclm ];
+            postInstall = ''
+              export self="$out/bin/$name"
+              substituteAllInPlace "$self"
+            '';
           };
         };
       aarch64-darwin =
@@ -179,6 +181,30 @@
             runtimeInputs = [ self.packages.aarch64-darwin.smc ];
             # pmset
             meta.platforms = [ "aarch64-darwin" ];
+          };
+          xbar-battery-plugin = let
+            smc = pkgs.lib.getExe self.packages.aarch64-darwin.smc;
+            smc_on = pkgs.writeShellScript "smc_on" ''
+              exec ${smc} -k CH0C -w 00
+            '';
+            smc_off = pkgs.writeShellScript "smc_off" ''
+              exec ${smc} -k CH0C -w 01
+            '';
+          in with lpl; lispScript {
+            name = "control-smc.1m.lisp";
+            src = ./control-smc.1m.lisp;
+            dependencies = [
+              cl-interpol
+              cl-ppcre
+              inferior-shell
+              trivia
+            ];
+            inherit smc smc_on smc_off;
+            passthru.sudo-binaries = [ smc_on smc_off ];
+            postInstall = ''
+              export self="$out/bin/$name"
+              substituteAllInPlace "$self"
+            '';
           };
         };
     };

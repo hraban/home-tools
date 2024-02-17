@@ -6,7 +6,7 @@
 ;; <xbar.var>boolean(DEBUG=false): Verbose output</xbar.var>
 ;; <xbar.dependencies>lisp</xbar.dependencies>
 
-;; Copyright © 2023–2024  Hraban Luyat
+;; Copyright © 2024  Hraban Luyat
 ;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU Affero General Public License as published
@@ -26,21 +26,22 @@
 (require "asdf")
 (require "uiop")
 
-(asdf:load-system "arrow-macros")
 (asdf:load-system "cl-interpol")
+(asdf:load-system "cl-ppcre")
 (asdf:load-system "inferior-shell")
+(asdf:load-system "trivia")
 
 (defpackage #:battery
-  (:use #:cl #:arrow-macros)
+  (:use #:cl)
   (:local-nicknames (#:sh #:inferior-shell)))
 
 (in-package #:battery)
 
 (named-readtables:in-readtable :interpol-syntax)
 
-(defvar *bclm* "@bclm@")
-;; This really only works because we are in Nix. How else you gonna do it? UIOP
-;; doesn’t give you access when calling a file using --script.
+(defvar *smc_off* "@smc_off@")
+(defvar *smc_on* "@smc_on@")
+(defvar *smc* "@smc@")
 (defvar *me* "@self@")
 
 (defun debugp ()
@@ -52,11 +53,15 @@
 (defun sh/ss (&rest args)
   (apply #'sh `(,@args :output (:string :stripped t))))
 
-(defun bclm-read ()
-  (parse-integer (sh/ss `(,*bclm* read))))
+(defun smc-read ()
+  (sh/ss `(,*smc* #\k "CH0C" #\r)))
 
-(defun bclm-write (val)
-  (sh `(sudo ,*bclm* write ,val)))
+(defun charging-state ()
+  (cl-ppcre:register-groups-bind (n) ("\\(bytes (\\d+)\\)" (smc-read))
+    (trivia:match n
+      ("00" "⚡")
+      ("01" "🔌")
+      (_    "❓"))))
 
 (defun println (s)
   (format T "~A~%" s))
@@ -64,21 +69,21 @@
 (defun boolstr (b)
   (if b "true" "false"))
 
-(defun print-set (lvl)
-  (println #?"Set to ${lvl} | shell=${*me*} | param1=${lvl} | terminal=${(boolstr (debugp))} | refresh=true"))
-
 (defun print-menu ()
-  (println (bclm-read))
+  (println (charging-state))
   (println "---")
-  (dolist (n (loop for i from 50 upto 100 by 10 collect i))
-    (print-set n)))
+  (println #?"⚡ | shell=${*me*} | param1=on | terminal=${(boolstr (debugp))} | refresh=true")
+  (println #?"🔌 | shell=${*me*} | param1=off | terminal=${(boolstr (debugp))} | refresh=true"))
 
 (defun main ()
   (trivia:match (uiop:command-line-arguments)
     (()
      (print-menu))
-    ((list x)
-     (bclm-write x)
+    ((list "on")
+     (sh `(sudo ,*smc_on*))
+     (print-menu))
+    ((list "off")
+     (sh `(sudo ,*smc_off*))
      (print-menu))))
 
 (main)
