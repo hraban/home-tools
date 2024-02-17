@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+
+set -eu
+
+BATT_PERCENT="$(pmset -g batt | tail -n1 | awk '{print $3}' | sed 's/%;//')"
+if [ "$BATT_PERCENT" -ge 30 ]; then
+	smc -k CH0C -w 01
+elif [ "$BATT_PERCENT" -le 10 ]; then
+	smc -k CH0C -w 00
+fi

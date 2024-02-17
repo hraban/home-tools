@@ -50,6 +50,22 @@
               systemPackages = [ get-timezone ];
             };
           };
+      battery-polling = { pkgs, config, ... }:
+        let
+          inherit (self.packages.${pkgs.system}) poll-smc-charging;
+        in {
+          assertions = [ {
+            assertion = pkgs.stdenv.system == "aarch64-darwin";
+            message = "The SMC can only be controlled on aarch64-darwin";
+          } ];
+          launchd.daemons.poll-smc-charging = {
+            command = pkgs.lib.getExe poll-smc-charging;
+            serviceConfig = {
+              RunAtLoad = true;
+              StartInterval = 60;
+            };
+          };
+        };
       xbar-battery-plugin = { pkgs, config, ... }:
         let
           inherit (self.packages.${pkgs.system}) battery;
@@ -136,6 +152,33 @@
               sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
               downloadPage = "https://github.com/zackelia/bclm/releases";
             };
+          };
+        };
+      aarch64-darwin =
+        let
+          pkgs = nixpkgs.legacyPackages.aarch64-darwin.extend cl-nix-lite.overlays.default;
+          lpl = pkgs.lispPackagesLite;
+        in {
+          smc = pkgs.stdenvNoCC.mkDerivation {
+            name = "smc";
+            dontUnpack = true;
+            dontPatch = true;
+            # I kinda forgot where I got this binary...?
+            installPhase = ''
+              mkdir -p $out/bin
+              cp ${./smc} $out/bin/smc
+            '';
+            meta = {
+              platforms = [ "aarch64-darwin" ];
+              sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
+            };
+          };
+          poll-smc-charging = pkgs.writeShellApplication {
+            name = "poll-smc-charging";
+            text = builtins.readFile ./poll-smc-charging;
+            runtimeInputs = [ self.packages.aarch64-darwin.smc ];
+            # pmset
+            meta.platforms = [ "aarch64-darwin" ];
           };
         };
     };
