@@ -2,9 +2,11 @@
 
 set -eu
 
+min="$1"
+max="$2"
 BATT_PERCENT="$(pmset -g batt | tail -n1 | awk '{print $3}' | sed 's/%;//')"
-if [ "$BATT_PERCENT" -ge 30 ]; then
+if [ "$BATT_PERCENT" -ge "$max" ]; then
 	smc -k CH0C -w 01
-elif [ "$BATT_PERCENT" -le 10 ]; then
+elif [ "$BATT_PERCENT" -le "$min" ]; then
 	smc -k CH0C -w 00
 fi

@@ -50,45 +50,96 @@
               systemPackages = [ get-timezone ];
             };
           };
-      battery-polling = { pkgs, config, ... }:
-        let
-          inherit (self.packages.${pkgs.system}) poll-smc-charging;
-        in {
-          assertions = [ {
-            assertion = pkgs.stdenv.system == "aarch64-darwin";
-            message = "The SMC can only be controlled on aarch64-darwin";
-          } ];
-          launchd.daemons.poll-smc-charging = {
-            command = pkgs.lib.getExe poll-smc-charging;
-            serviceConfig = {
-              RunAtLoad = true;
-              StartInterval = 60;
+      battery-control = let
+        clamp-service = { lib, ... }: {
+          options = with lib; with types; {
+            enable = mkOption {
+              type = bool;
+              default = false;
+              description = "Whether to enable a launch daemon to control the battery charge";
+            };
+            min = mkOption {
+              type = ints.between 0 100;
+              default = 50;
+              description = "Lowest permissible charge: under this, charging is enabled";
+            };
+            max = mkOption {
+              type = ints.between 0 100;
+              default = 80;
+              description = "Highest permissible charge: above this, charging is disabled";
             };
           };
         };
-      xbar-battery-plugin = { pkgs, config, ... }: let
-        plugin = self.packages.${pkgs.system}.xbar-battery-plugin;
-      in {
-        # Assume home-manager is used.
-        home-manager.users = pkgs.lib.genAttrs config.users.knownUsers (name: {
-          home.file.xbar-battery-plugin = {
-            # The easiest way to copy a binary whose name I don’t know, is to
-            # just copy the entire directory recursively, because I know it’s
-            # the only binary in there, anyway :)
-            source = "${plugin}/bin/";
-            target = "Library/Application Support/xbar/plugins/";
-            recursive = true;
-            executable = true;
+        xbar-plugin = { lib, ... }: {
+          options = with lib; with types; {
+            enable = mkOption {
+              type = bool;
+              default = false;
+              description = "Install a charging toggle in xbar for all users";
+            };
           };
-        });
-        environment = {
-          etc."sudoers.d/home-tools-battery-control".text = pkgs.lib.concatMapStringsSep "\n" (bin: ''
-            ALL ALL = NOPASSWD: ${bin}
-          '') plugin.sudo-binaries;
         };
+      in { lib, pkgs, config, ... }: let
+        cfg = config.battery-control;
+      in {
+        options = with lib; with types; {
+          battery-control = {
+            clamp-service = mkOption {
+              description = "A polling service that toggles charging on/off depending on battery level";
+              type = submodule clamp-service;
+              default = {};
+            };
+            xbar-plugin = mkOption {
+              description = "A battery charge toggle in xbar";
+              type = submodule xbar-plugin;
+              default = {};
+            };
+          };
+        };
+        config = lib.mkMerge [
+          (lib.mkIf cfg.clamp-service.enable {
+            assertions = [ {
+              assertion = pkgs.stdenv.system == "aarch64-darwin";
+              message = "The SMC can only be controlled on aarch64-darwin";
+            } ];
+            launchd.daemons = {
+              poll-smc-charging = {
+                serviceConfig = {
+                  RunAtLoad = true;
+                  StartInterval = 60;
+                  ProgramArguments = [
+                    (lib.getExe self.packages.${pkgs.system}.clamp-smc-charging)
+                    (builtins.toString cfg.clamp-service.min)
+                    (builtins.toString cfg.clamp-service.max)
+                  ];
+                };
+              };
+            };
+          })
+          (lib.mkIf cfg.xbar-plugin.enable (let
+            inherit (self.packages.${pkgs.system}) xbar-battery-plugin;
+          in {
+            environment = {
+              etc."sudoers.d/home-tools-battery-control".text = pkgs.lib.concatMapStringsSep "\n" (bin: ''
+                ALL ALL = NOPASSWD: ${bin}
+              '') xbar-battery-plugin.sudo-binaries;
+            };
+            # Assume home-manager is used.
+            home-manager.sharedModules = [ ({ ... }: {
+              home.file.xbar-battery-plugin = {
+                # The easiest way to copy a binary whose name I don’t know, is to
+                # just copy the entire directory recursively, because I know it’s
+                # the only binary in there, anyway :)
+                source = "${xbar-battery-plugin}/bin/";
+                target = "Library/Application Support/xbar/plugins/";
+                recursive = true;
+                executable = true;
+              };
+            }) ];
+          }))
+        ];
       };
     };
-  } // {
     packages = nixpkgs.lib.recursiveUpdate (nixpkgs.lib.genAttrs (with flake-utils.lib.system; [ x86_64-darwin aarch64-darwin ]) (system:
       let
         pkgs = nixpkgs.legacyPackages.${system}.extend cl-nix-lite.overlays.default;
@@ -175,9 +226,9 @@
               sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
             };
           };
-          poll-smc-charging = pkgs.writeShellApplication {
-            name = "poll-smc-charging";
-            text = builtins.readFile ./poll-smc-charging;
+          clamp-smc-charging = pkgs.writeShellApplication {
+            name = "clamp-smc-charging";
+            text = builtins.readFile ./clamp-smc-charging;
             runtimeInputs = [ self.packages.aarch64-darwin.smc ];
             # pmset
             meta.platforms = [ "aarch64-darwin" ];
