@@ -222,6 +222,7 @@
               cp ${./smc} $out/bin/smc
             '';
             meta = {
+              mainProgram = "smc";
               platforms = [ "aarch64-darwin" ];
               sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
             };
