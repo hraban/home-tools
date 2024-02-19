@@ -1,6 +1,53 @@
 * Hraban’s Home Tools
 
-Various utility scripts for my computer.
+Various Nix utility scripts for my computer.
+
+* Battery Control for Mac (Intel and Apple Sillicon)
+
+Use the =battery-control= nix-darwin module to control the maximum charge of
+your battery.
+
+Example:
+
+#+begin_src nix
+{
+  inputs = {
+    home-tools.url = "github:hraban/home-tools";
+  };
+
+  outputs = {
+    nix-darwin
+  , home-tools
+  , ...
+  }: {
+    darwinConfigurations = {
+      MyHost = nix-darwin.lib.darwinSystem {
+        # ...
+
+        modules = [
+          # Load the module here
+          home-tools.darwinModules.default
+
+          # Now you can configure the actual module:
+          ({ pkgs, ... }: {
+            battery-control = {
+              # Use a clamping service to automatically turn charging...
+              clamp-service = {
+                enable = true;
+                min = 10; # ON, when charge drops below this level
+                max = 30; # OFF when charge rises above this level
+              };
+              # And/or enable an xbar plugin to manually toggle charging
+              # (requires xbar installed, of course, but also home-manager)
+              xbar-plugin.enable = true;
+            };
+          })
+        ];
+      };
+    };
+  };
+}
+#+end_src
 
 * License
 
