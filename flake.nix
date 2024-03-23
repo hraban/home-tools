@@ -186,6 +186,7 @@
               license = pkgs.lib.licenses.mit;
               sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
               downloadPage = "https://github.com/zackelia/bclm/releases";
+              mainProgram = "bclm";
             };
           };
           xbar-battery-plugin = let
