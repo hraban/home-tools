@@ -120,7 +120,7 @@
             inherit (self.packages.${pkgs.system}) xbar-battery-plugin;
           in {
             environment = {
-              etc."sudoers.d/home-tools-battery-control".text = pkgs.lib.concatMapStringsSep "\n" (bin: ''
+              etc."sudoers.d/nix-tools-battery-control".text = pkgs.lib.concatMapStringsSep "\n" (bin: ''
                 ALL ALL = NOPASSWD: ${bin}
               '') xbar-battery-plugin.sudo-binaries;
             };

@@ -1,6 +1,6 @@
-* Hraban’s Home Tools
+* Hraban’s Misc Nix Tools
 
-Various Nix utility scripts for my computer.
+Various Nix utility scripts for my nix computers.
 
 * Battery Control for Mac (Intel and Apple Sillicon)
 
@@ -12,12 +12,12 @@ Example:
 #+begin_src nix
 {
   inputs = {
-    home-tools.url = "github:hraban/home-tools";
+    nix-tools.url = "github:hraban/nix-tools";
   };
 
   outputs = {
     nix-darwin
-  , home-tools
+  , nix-tools
   , ...
   }: {
     darwinConfigurations = {
@@ -26,7 +26,7 @@ Example:
 
         modules = [
           # Load the module here
-          home-tools.darwinModules.default
+          nix-tools.darwinModules.default
 
           # Now you can configure the actual module:
           ({ pkgs, ... }: {
@@ -71,5 +71,3 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-
