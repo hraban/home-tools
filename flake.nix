@@ -146,7 +146,11 @@
         # copied / cargo culted from the digitalocean-init service
         systemd.services.digitalocean-extract-keys = {
           description = "Extract secrets from do-userdata.nix comments";
-          wantedBy = [ "network-online.target" "digitalocean-init.service" ];
+          wantedBy = [
+            "multi-user.target"
+            "network.target"
+            "network-online.target"
+          ];
           unitConfig = {
             ConditionPathExists = "/etc/nixos/do-userdata.nix";
             After = [ "digitalocean-metadata.service" ];
